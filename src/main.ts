@@ -4,15 +4,19 @@ import { Command } from "commander";
 import { AddCommand } from "./presentation/cli/commands/add.command";
 import { DeadlineCommand } from "./presentation/cli/commands/deadline.command";
 import { DeleteCommand } from "./presentation/cli/commands/delete.command";
+import { ExportCommand } from "./presentation/cli/commands/export.command";
 import { FilterCommand } from "./presentation/cli/commands/filter.command";
+import { ImportCommand } from "./presentation/cli/commands/import.command";
 import { ListCommand } from "./presentation/cli/commands/list.command";
 import { MarkCommand } from "./presentation/cli/commands/mark.command";
 import { PrintCommand } from "./presentation/cli/commands/print.command";
 import { PriorityCommand } from "./presentation/cli/commands/priority.command";
+import { ReportCommand } from "./presentation/cli/commands/report.command";
 import { SearchCommand } from "./presentation/cli/commands/search.command";
 import { StatsCommand } from "./presentation/cli/commands/stats.command";
 import { TagCommand } from "./presentation/cli/commands/tag.command";
 import { UpdateCommand } from "./presentation/cli/commands/update.command";
+
 const program = new Command();
 
 program
@@ -181,7 +185,60 @@ program
     });
   });
 
-// Help command for individual commands
+// Export command (باید قبل از help command تعریف شود)
+program
+  .command("export")
+  .description("Export tasks to various formats")
+  .argument("[status]", "Filter by status (todo, in-progress, done)")
+  .option(
+    "-f, --format <format>",
+    "Export format: json, csv, markdown, table",
+    "json"
+  )
+  .option("-o, --output <path>", "Output file path")
+  .option("--header <true/false>", "Include header in CSV", "true")
+  .action(async (status, options) => {
+    const command = new ExportCommand();
+    await command.execute({
+      status,
+      format: options.format,
+      output: options.output,
+      header: options.header === "true",
+    });
+  });
+
+// Import command
+program
+  .command("import")
+  .description("Import tasks from file")
+  .argument("<file>", "Path to import file")
+  .option("-f, --format <format>", "Import format: json, csv", "json")
+  .option("-m, --merge", "Merge with existing tasks")
+  .action(async (file, options) => {
+    const command = new ImportCommand();
+    await command.execute({
+      file,
+      format: options.format,
+      merge: options.merge,
+    });
+  });
+
+// Report command
+program
+  .command("report")
+  .description("Generate various reports")
+  .option(
+    "-t, --type <type>",
+    "Report type: weekly, productivity, burn-down",
+    "weekly"
+  )
+  .option("-o, --output <type>", "Output type: console, file", "console")
+  .action(async (options) => {
+    const command = new ReportCommand();
+    await command.execute(options);
+  });
+
+// Help command for individual commands (باید در انتها باشد)
 program
   .command("help")
   .description("Display help for a specific command")
@@ -225,6 +282,8 @@ if (!process.argv.slice(2).length) {
   );
   console.log("  task-cli filter --priority high --overdue");
   console.log("  task-cli set-priority 1 high");
+  console.log("  task-cli export --format csv");
 }
 
+// این خط باید در انتهای فایل باشد
 program.parse(process.argv);
