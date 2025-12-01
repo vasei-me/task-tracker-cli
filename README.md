@@ -274,5 +274,4 @@ refactor: code restructuring
 test: add or update tests
 chore: maintenance tasks
 ```
-
-**Happy Task Tracking!** 🚀
+Project URL: https://roadmap.sh/projects/task-tracker
