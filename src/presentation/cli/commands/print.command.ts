@@ -10,8 +10,19 @@ export class PrintCommand extends BaseCommand {
       const repository = new JsonTaskRepository();
       const listUseCase = new ListTasksUseCase(repository);
 
-      const tasks = await listUseCase.execute(args.status);
-      this.displayTable(tasks, args.status);
+      // Validate status if provided
+      let status = args.status;
+      if (status && !["todo", "in-progress", "done"].includes(status)) {
+        console.log(
+          chalk.yellow(
+            `⚠️  Invalid status: "${status}". Showing all tasks instead.`
+          )
+        );
+        status = undefined;
+      }
+
+      const tasks = await listUseCase.execute(status);
+      this.displayTable(tasks, status);
     } catch (error: any) {
       console.error(chalk.red(`❌ Error: ${error.message}`));
     }
