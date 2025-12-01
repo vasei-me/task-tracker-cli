@@ -1,0 +1,31 @@
+{
+  "name": "task-cli",
+  "version": "1.0.0",
+  "description": "A CLI task tracker application",
+  "main": "dist/main.js",
+  "bin": {
+    "task-cli": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/main.ts",
+    "dev": "ts-node src/main.ts",
+    "test": "jest"
+  },
+  "keywords": [
+    "cli",
+    "task",
+    "todo",
+    "productivity"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "dependencies": {
+    "commander": "^11.0.0"
+  }
+}
