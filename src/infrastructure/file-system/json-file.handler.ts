@@ -7,9 +7,13 @@ export class JSONFileHandler {
   async read(): Promise<any[]> {
     try {
       const data = await fs.readFile(this.filePath, "utf-8");
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
     } catch (error: any) {
       if (error.code === "ENOENT") {
+        // Create directory if doesn't exist
+        const dir = path.dirname(this.filePath);
+        await fs.mkdir(dir, { recursive: true });
         return [];
       }
       throw error;
@@ -17,14 +21,6 @@ export class JSONFileHandler {
   }
 
   async write(data: any[]): Promise<void> {
-    const dir = path.dirname(this.filePath);
-
-    try {
-      await fs.access(dir);
-    } catch {
-      await fs.mkdir(dir, { recursive: true });
-    }
-
     const jsonData = JSON.stringify(data, null, 2);
     await fs.writeFile(this.filePath, jsonData, "utf-8");
   }
@@ -35,6 +31,16 @@ export class JSONFileHandler {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async backup(): Promise<void> {
+    const backupPath = `${this.filePath}.backup`;
+    try {
+      const data = await fs.readFile(this.filePath, "utf-8");
+      await fs.writeFile(backupPath, data, "utf-8");
+    } catch (error) {
+      // Silently fail for backup
     }
   }
 }
