@@ -2,14 +2,17 @@
 
 import { Command } from "commander";
 import { AddCommand } from "./presentation/cli/commands/add.command";
+import { DeadlineCommand } from "./presentation/cli/commands/deadline.command";
 import { DeleteCommand } from "./presentation/cli/commands/delete.command";
+import { FilterCommand } from "./presentation/cli/commands/filter.command";
 import { ListCommand } from "./presentation/cli/commands/list.command";
 import { MarkCommand } from "./presentation/cli/commands/mark.command";
 import { PrintCommand } from "./presentation/cli/commands/print.command";
+import { PriorityCommand } from "./presentation/cli/commands/priority.command";
 import { SearchCommand } from "./presentation/cli/commands/search.command";
 import { StatsCommand } from "./presentation/cli/commands/stats.command";
+import { TagCommand } from "./presentation/cli/commands/tag.command";
 import { UpdateCommand } from "./presentation/cli/commands/update.command";
-
 const program = new Command();
 
 program
@@ -22,9 +25,17 @@ program
   .command("add")
   .description("Add a new task")
   .argument("<description>", "Task description")
-  .action(async (description) => {
+  .option("-d, --deadline <date>", "Deadline (YYYY-MM-DD or ISO format)")
+  .option("-p, --priority <level>", "Priority: low, medium, high", "medium")
+  .option("-t, --tags <tags>", "Comma-separated tags")
+  .action(async (description, options) => {
     const command = new AddCommand();
-    await command.execute({ description });
+    await command.execute({
+      description,
+      deadline: options.deadline,
+      priority: options.priority,
+      tags: options.tags,
+    });
   });
 
 // List command
@@ -53,9 +64,18 @@ program
   .description("Update a task")
   .argument("<id>", "Task ID", parseInt)
   .argument("<description>", "New task description")
-  .action(async (id, description) => {
+  .option("-d, --deadline <date>", 'Update deadline (use "null" to remove)')
+  .option("-p, --priority <level>", "Update priority")
+  .option("-t, --tags <tags>", "Update tags (comma-separated)")
+  .action(async (id, description, options) => {
     const command = new UpdateCommand();
-    await command.execute({ id, description });
+    await command.execute({
+      id,
+      description,
+      deadline: options.deadline,
+      priority: options.priority,
+      tags: options.tags,
+    });
   });
 
 // Delete command
@@ -86,6 +106,54 @@ program
   .action(async (id) => {
     const command = new MarkCommand();
     await command.execute({ id, status: "done" });
+  });
+
+// Priority command
+program
+  .command("set-priority")
+  .description("Set task priority")
+  .argument("<id>", "Task ID", parseInt)
+  .argument("<priority>", "Priority: low, medium, high")
+  .action(async (id, priority) => {
+    const command = new PriorityCommand();
+    await command.execute({ id, priority });
+  });
+
+// Tag command
+program
+  .command("tag")
+  .description("Manage task tags")
+  .argument("<action>", "Action: add or remove")
+  .argument("<id>", "Task ID", parseInt)
+  .argument("<tag>", "Tag name")
+  .action(async (action, id, tag) => {
+    const command = new TagCommand();
+    await command.execute({ action, id, tag });
+  });
+
+// Deadline command
+program
+  .command("deadline")
+  .description("Set or clear task deadline")
+  .argument("<id>", "Task ID", parseInt)
+  .argument("<date>", 'Deadline date or "clear" to remove')
+  .action(async (id, date) => {
+    const command = new DeadlineCommand();
+    await command.execute({ id, deadline: date });
+  });
+
+// Filter command
+program
+  .command("filter")
+  .description("Filter tasks by multiple criteria")
+  .option("-s, --status <status>", "Filter by status")
+  .option("-p, --priority <priority>", "Filter by priority")
+  .option("-t, --tag <tag>", "Filter by tag")
+  .option("-o, --overdue", "Show only overdue tasks")
+  .option("-d, --due-today", "Show only tasks due today")
+  .action(async (options) => {
+    const command = new FilterCommand();
+    await command.execute(options);
   });
 
 // Stats command
@@ -151,6 +219,12 @@ if (!process.argv.slice(2).length) {
   console.log('  task-cli add "My first task"');
   console.log("  task-cli list");
   console.log("  task-cli stats");
+  console.log("\n🚀 Advanced Features:");
+  console.log(
+    '  task-cli add "Task" --deadline 2024-12-20 --priority high --tags "work,urgent"'
+  );
+  console.log("  task-cli filter --priority high --overdue");
+  console.log("  task-cli set-priority 1 high");
 }
 
 program.parse(process.argv);

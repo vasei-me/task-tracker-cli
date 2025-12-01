@@ -1,20 +1,13 @@
 import { InvalidTaskDescriptionException } from "../../core/exceptions/task.exception";
 import { ITaskRepository } from "../../core/interfaces/repository.interface";
-import { UpdateTaskDTO } from "../../core/interfaces/task.interface";
+import { CreateTaskDTO } from "../../core/interfaces/task.interface";
 
-export class UpdateTaskUseCase {
+export class CreateTaskUseCase {
   constructor(private readonly taskRepository: ITaskRepository) {}
 
-  async execute(id: number, data: UpdateTaskDTO) {
-    if (!id || id <= 0) {
-      throw new Error("Invalid task ID");
-    }
-
-    if (data.description !== undefined) {
-      if (!data.description || data.description.trim().length === 0) {
-        throw new InvalidTaskDescriptionException();
-      }
-      data.description = data.description.trim();
+  async execute(data: CreateTaskDTO) {
+    if (!data.description || data.description.trim().length === 0) {
+      throw new InvalidTaskDescriptionException();
     }
 
     // Validate priority
@@ -22,8 +15,8 @@ export class UpdateTaskUseCase {
       throw new Error("Invalid priority. Must be: low, medium, or high");
     }
 
-    // Validate deadline format if provided and not null
-    if (data.deadline !== undefined && data.deadline !== null) {
+    // Validate deadline format if provided
+    if (data.deadline) {
       const deadlineDate = new Date(data.deadline);
       if (isNaN(deadlineDate.getTime())) {
         throw new Error(
@@ -33,7 +26,7 @@ export class UpdateTaskUseCase {
     }
 
     // Validate tags
-    if (data.tags !== undefined) {
+    if (data.tags) {
       if (!Array.isArray(data.tags)) {
         throw new Error("Tags must be an array");
       }
@@ -42,6 +35,11 @@ export class UpdateTaskUseCase {
         .filter((tag: string) => tag.length > 0);
     }
 
-    return await this.taskRepository.update(id, data);
+    return await this.taskRepository.create({
+      description: data.description.trim(),
+      deadline: data.deadline,
+      priority: data.priority,
+      tags: data.tags,
+    });
   }
 }

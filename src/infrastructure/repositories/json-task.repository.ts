@@ -4,6 +4,8 @@ import { ITaskRepository } from "../../core/interfaces/repository.interface";
 import {
   CreateTaskDTO,
   ITask,
+  TaskFilters,
+  TaskPriority,
   TaskStatus,
   UpdateTaskDTO,
 } from "../../core/interfaces/task.interface";
@@ -36,7 +38,16 @@ export class JsonTaskRepository implements ITaskRepository {
     const tasks = await this.findAll();
     const nextId = await this.getNextId();
 
-    const newTask = new Task(nextId, taskData.description);
+    const newTask = new Task(
+      nextId,
+      taskData.description,
+      "todo", // default status
+      new Date(),
+      new Date(),
+      taskData.deadline ? new Date(taskData.deadline) : undefined,
+      taskData.priority || "medium",
+      taskData.tags || []
+    );
 
     tasks.push(newTask);
     await this.fileHandler.write(tasks.map((task) => this.mapToObject(task)));
@@ -52,14 +63,29 @@ export class JsonTaskRepository implements ITaskRepository {
       throw new TaskNotFoundException(id);
     }
 
-    const task = tasks[index] as Task; // Type assertion برای دسترسی به متدها
+    const task = tasks[index] as Task;
 
-    if (taskData.description) {
+    if (taskData.description !== undefined) {
       task.updateDescription(taskData.description);
     }
 
     if (taskData.status) {
       task.updateStatus(taskData.status);
+    }
+
+    if (taskData.priority !== undefined) {
+      task.updatePriority(taskData.priority);
+    }
+
+    if (taskData.deadline !== undefined) {
+      task.setDeadline(
+        taskData.deadline ? new Date(taskData.deadline) : undefined
+      );
+    }
+
+    if (taskData.tags !== undefined) {
+      task.tags = taskData.tags;
+      task.updatedAt = new Date();
     }
 
     await this.fileHandler.write(tasks.map((t) => this.mapToObject(t)));
@@ -68,9 +94,10 @@ export class JsonTaskRepository implements ITaskRepository {
 
   async delete(id: number): Promise<boolean> {
     const tasks = await this.findAll();
+    const initialLength = tasks.length;
     const filteredTasks = tasks.filter((task) => task.id !== id);
 
-    if (filteredTasks.length === tasks.length) {
+    if (filteredTasks.length === initialLength) {
       return false;
     }
 
@@ -88,13 +115,89 @@ export class JsonTaskRepository implements ITaskRepository {
     return maxId + 1;
   }
 
+  async findByPriority(priority: TaskPriority): Promise<ITask[]> {
+    const tasks = await this.findAll();
+    return tasks.filter((task) => task.priority === priority);
+  }
+
+  async findByTag(tag: string): Promise<ITask[]> {
+    const tasks = await this.findAll();
+    return tasks.filter((task) => task.tags.includes(tag));
+  }
+
+  async findOverdue(): Promise<ITask[]> {
+    const tasks = await this.findAll();
+    return tasks.filter((task) => {
+      if (!task.deadline || task.status === "done") return false;
+      return new Date() > new Date(task.deadline);
+    });
+  }
+
+  async findDueToday(): Promise<ITask[]> {
+    const tasks = await this.findAll();
+    const today = new Date();
+
+    return tasks.filter((task) => {
+      if (!task.deadline) return false;
+      const deadline = new Date(task.deadline);
+
+      return (
+        deadline.getDate() === today.getDate() &&
+        deadline.getMonth() === today.getMonth() &&
+        deadline.getFullYear() === today.getFullYear()
+      );
+    });
+  }
+
+  async findByFilters(filters: TaskFilters): Promise<ITask[]> {
+    let tasks = await this.findAll();
+
+    if (filters.status) {
+      tasks = tasks.filter((task: ITask) => task.status === filters.status);
+    }
+
+    if (filters.priority) {
+      tasks = tasks.filter((task: ITask) => task.priority === filters.priority);
+    }
+
+    if (filters.tag) {
+      tasks = tasks.filter((task: ITask) => task.tags.includes(filters.tag!));
+    }
+
+    if (filters.overdue) {
+      tasks = tasks.filter((task: ITask) => {
+        if (!task.deadline || task.status === "done") return false;
+        return new Date() > new Date(task.deadline);
+      });
+    }
+
+    if (filters.dueToday) {
+      const today = new Date();
+      tasks = tasks.filter((task: ITask) => {
+        if (!task.deadline) return false;
+        const deadline = new Date(task.deadline);
+
+        return (
+          deadline.getDate() === today.getDate() &&
+          deadline.getMonth() === today.getMonth() &&
+          deadline.getFullYear() === today.getFullYear()
+        );
+      });
+    }
+
+    return tasks;
+  }
+
   private mapToEntity(data: any): Task {
     return new Task(
       data.id,
       data.description,
       data.status,
       new Date(data.createdAt),
-      new Date(data.updatedAt)
+      new Date(data.updatedAt),
+      data.deadline ? new Date(data.deadline) : undefined,
+      data.priority || "medium",
+      data.tags || []
     );
   }
 
@@ -105,6 +208,9 @@ export class JsonTaskRepository implements ITaskRepository {
       status: task.status,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
+      deadline: task.deadline ? task.deadline.toISOString() : null,
+      priority: task.priority,
+      tags: task.tags,
     };
   }
 }
